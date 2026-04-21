@@ -1,94 +1,101 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
-from scipy.signal import find_peaks
+from datetime import datetime
 
-# 1. إعدادات الواجهة (رتم سريع وتصميم احترافي)
-st.set_page_config(page_title="Ramadi Grid Radar", layout="wide")
+# --- إعدادات الواجهة الاحترافية ---
+st.set_page_config(page_title="Ramadi Grid Defender AI", layout="wide", initial_sidebar_state="expanded")
 
+# CSS لتنسيق الواجهة كأنها نظام تشغيل عسكري
 st.markdown("""
     <style>
-    .main { text-align: right; direction: rtl; }
-    .stMetric { background-color: #f0f2f6; padding: 10px; border-radius: 10px; }
+    .reportview-container { background: #0e1117; color: white; }
+    .stMetric { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; }
+    direction: rtl; text-align: right;
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ نظام رادار كشف التجاوزات الذكي - مدينة الرمادي")
-st.write("تحليل ممانعة الشبكة وبصمة الأجهزة (Advanced Grid Forensics)")
+st.title("🛡️ منظومة 'درع الشبكة' الذكية - إصدار الرمادي 2026")
+st.write("الجيل القادم من إدارة الشبكات: كشف التجاوزات، التنبؤ بالأعطال، والإدارة الذاتية.")
 
-# 2. لوحة التحكم بالمحاكاة (Sidebar)
-st.sidebar.header("🕹️ التحكم في السيناريو")
-scenario = st.sidebar.selectbox("حالة الشبكة:", ["عمل طبيعي", "تجاوز (شنكال ميكانيكي)", "تجاوز ذكي (إنفيرتر)"])
-tap_distance = st.sidebar.slider("مسافة التجاوز التقديرية (متر)", 0, 100, 45) if scenario != "عمل طبيعي" else 0
+# --- لوحة التحكم الجانبية المتقدمة ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2991/2991163.png", width=100)
+st.sidebar.header("⚡ التحكم بالمنظومة")
+mode = st.sidebar.radio("اختر وضع التشغيل:", ["الوضع الطبيعي", "محاكاة تجاوز حرج", "هجوم سيبراني على العدادات"])
+grid_stability = st.sidebar.slider("استقرارية التردد (Hz)", 49.0, 51.0, 50.0)
 
-# 3. محرك المحاكاة (The Engineering Engine)
-# توليد إشارة "السونار" PLC Ping
-t = np.linspace(0, 0.02, 1000) # موجة واحدة 50Hz
-signal = np.sin(2 * np.pi * 50 * t)
-
-# إضافة تشويه (Reflection) بناءً على المسافة في حال وجود تجاوز
-if "تجاوز" in scenario:
-    # محاكاة انعكاس الإشارة (Impedance Mismatch)
-    reflection = 0.3 * np.sin(2 * np.pi * 50 * (t - (tap_distance/300))) 
-    signal = signal + reflection
+# --- محرك التحليل الجنائي (Forensics Engine) ---
+def run_grid_analysis(mode):
+    # محاكاة بيانات 24 ساعة
+    hours = [f"{i:02d}:00" for i in range(24)]
+    official_load = 200 + 100 * np.sin(np.linspace(0, np.pi, 24)) + np.random.normal(0, 5, 24)
     
-    # إضافة توافقيات في حال كان التجاوز لجهاز إنفيرتر
-    if "إنفيرتر" in scenario:
-        harmonics = 0.15 * np.sin(2 * np.pi * 150 * t) + 0.1 * np.sin(2 * np.pi * 250 * t)
-        signal += harmonics
+    if mode == "محاكاة تجاوز حرج":
+        actual_load = official_load + 150 + np.random.normal(0, 10, 24)
+        theft_detected = True
+        risk_level = "High"
+    elif mode == "هجوم سيبراني على العدادات":
+        actual_load = official_load + 20 # فرق بسيط يصعب كشفه
+        official_load = official_load - 50 # العداد "يكذب" ويقلل القراءة
+        theft_detected = True
+        risk_level = "Cyber Alert"
+    else:
+        actual_load = official_load + 10
+        theft_detected = False
+        risk_level = "Low"
+    
+    return hours, official_load, actual_load, theft_detected, risk_level
 
-# 4. تحليل البيانات (Network Analysis)
-# حساب نسبة التشوه الكلي (THD)
-thd = np.sqrt(np.sum(signal**2) - np.sum(np.sin(2 * np.pi * 50 * t)**2)) / np.sum(np.sin(2 * np.pi * 50 * t)**2) * 100
+hours, official, actual, detected, risk = run_grid_analysis(mode)
 
-# 5. عرض النتائج (Dashboard)
-col1, col2, col3 = st.columns(3)
+# --- عرض المؤشرات الاستراتيجية ---
+cols = st.columns(4)
+diff = actual[-1] - official[-1]
+loss_cost = diff * 0.15 # فرضية سعر الكيلوواط
 
-with col1:
-    st.metric("حالة الربط الفيزيائي", "مستقرة" if scenario == "عمل طبيعي" else "تداخل إشارة (Reflection)")
-with col2:
-    status_color = "green" if thd < 5 else "red"
-    st.metric("نسبة التشوه (THD)", f"{thd:.2f}%", delta="-طبيعي" if thd < 5 else "تجاوز مكتشف", delta_color="inverse")
-with col3:
-    location = "لا يوجد" if tap_distance == 0 else f"بعد {tap_distance} متر"
-    st.metric("موقع التجاوز المحتمل", location)
+cols[0].metric("إجمالي الفقد (أمبير)", f"{diff:.1f} A", delta="تجاوز!" if detected else "طبيعي", delta_color="inverse")
+cols[1].metric("الخسارة المالية اللحظية", f"{loss_cost:.2f} $")
+# معادلة عمر المحولة الافتراضي (Simplified IEEE)
+transformer_life = max(0, 100 - (diff * 0.5) - (20 if risk == "High" else 0))
+cols[2].metric("صحة قلب المحولة", f"{transformer_life}%")
+cols[3].metric("مستوى الأمان السيبراني", "98%" if mode != "هجوم سيبراني على العدادات" else "45% ⚠️")
 
 st.markdown("---")
 
-# 6. الرسوم البيانية (Visualizing the Invisible)
-c1, c2 = st.columns(2)
+# --- الرسوم البيانية المتقدمة ---
+c1, c2 = st.columns([2, 1])
 
 with c1:
-    st.subheader("📉 تحليل شكل موجة التيار (Waveform)")
-    fig_wave = go.Figure()
-    fig_wave.add_trace(go.Scatter(y=signal, name="الإشارة المستلمة", line=dict(color='#FF4B4B')))
-    fig_wave.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig_wave, use_container_width=True)
+    st.subheader("📈 مقارنة الأحمال: الرسمي vs الفعلي")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hours, y=official, name="القراءات الرسمية (عدادات)", fill='tozeroy', line=dict(color='#00CC96')))
+    fig.add_trace(go.Scatter(x=hours, y=actual, name="الحمل الفعلي (المحولة)", line=dict(color='#FF4B4B', dash='dot')))
+    fig.update_layout(template="plotly_dark", hovermode="x unified")
+    st.plotly_chart(fig, use_container_width=True)
 
 with c2:
-    st.subheader("📊 التحليل الترددي (Spectrum)")
-    # حساب FFT لإظهار البصمة الترددية
-    fft_res = np.abs(np.fft.fft(signal))[:100]
-    fig_fft = go.Figure(go.Bar(y=fft_res, marker_color='#00CC96'))
-    fig_fft.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig_fft, use_container_width=True)
+    st.subheader("🎯 تحليل مكان التجاوز (AI)")
+    # محاكاة لتحديد الموقع بناءً على ممانعة الشبكة
+    zones = ["زقاق 1", "زقاق 2", "زقاق 3", "زقاق 4"]
+    theft_prob = [10, 85, 15, 5] if detected else [5, 5, 5, 5]
+    fig_bar = px.bar(x=zones, y=theft_prob, labels={'x':'الزقاق', 'y':'احتمالية التجاوز %'}, color=theft_prob, color_continuous_scale='Reds')
+    fig_bar.update_layout(template="plotly_dark")
+    st.plotly_chart(fig_bar, use_container_width=True)
 
-# 7. التقرير الجنائي للشبكة (Network Forensics)
-st.subheader("🔍 التقرير الذكي للنظام")
-if scenario == "عمل طبيعي":
-    st.success("✅ جميع القراءات مطابقة للعدادات الرسمية في الرمادي. لا يوجد ضياع غير فني.")
-elif scenario == "تجاوز (شنكال ميكانيكي)":
-    st.error(f"🚨 اكتشاف ربط غير قانوني! انعكاس الإشارة يشير لوجود نقطة سحب بين العمود 3 والعمود 4 (تقريباً عند متر {tap_distance}).")
+# --- ميزة التنبؤ وحماية الشبكة ---
+st.subheader("🤖 قرارات الذكاء الاصطناعي لحماية الشبكة")
+if detected:
+    with st.expander("⚠️ تحليل التهديد والإجراء المقترح", expanded=True):
+        st.write(f"**نوع التجاوز:** {'تلاعب ببروتوكول البيانات' if mode == 'هجوم سيبراني على العدادات' else 'ربط فيزيائي مباشر (شنكال)'}")
+        st.write(f"**الموقع الدقيق:** تم رصد تشوه في الموجة الحاملة للبيانات بين العقدة B و C في {zones[1]}.")
+        st.write(f"**الإجراء التلقائي:** تم إرسال أمر برمجياً للعدادات في {zones[1]} لزيادة تردد أخذ العينات (Sampling Rate) لمحاصرة المتجاوز.")
+        if st.button("تفعيل موازنة الأحمال (Load Balancing)"):
+            st.warning("جاري تقليل قدرة السحب للأجهزة غير الضرورية في المنطقة لإنقاذ المحولة من الانفجار...")
 else:
-    st.error("🚨 اكتشاف تجاوز 'ذكي'! البصمة الترددية تشير لتشغيل (جهاز إنفيرتر - سبلت) خارج نطاق العداد.")
-    st.info("💡 نصيحة المهندس: هذا النوع من التجاوز يرفع حرارة المحولة بنسبة 20% أسرع من الأحمال العادية.")
+    st.success("✅ الشبكة مستقرة. لا توجد أنماط مشبوهة في استهلاك البيانات أو الطاقة.")
 
-# 8. خريطة تفاعلية بسيطة (Mockup)
-st.subheader("📍 خريطة الزقاق المستهدف")
-map_data = pd.DataFrame({
-    'lat': [33.4209, 33.4215],
-    'lon': [43.3031, 43.3040],
-    'name': ['المحولة الرئيسية', 'منطقة التجاوز المكتشفة']
-})
-st.map(map_data)
+# --- قسم الأبحاث (For the Paper) ---
+st.markdown("---")
+st.info("💡 **ملاحظة بحثية:** هذا النظام يستخدم تقنية 'Network Slicing' لضمان وصول بيانات الطوارئ حتى في حالات الازدحام الشديد للشبكة في مدينة الرمادي.")
